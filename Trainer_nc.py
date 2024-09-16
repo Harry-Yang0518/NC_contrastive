@@ -119,6 +119,7 @@ class Trainer(object):
 
         return losses
 
+
     def train_base(self):
 
         # tell wandb to watch what the model gets up to: gradients, weights, and more!

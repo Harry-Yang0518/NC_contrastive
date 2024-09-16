@@ -18,3 +18,4 @@ wandb/
 .idea/*
 result_.*/*
 utils/__pycache__/moco_loader.cpython-37.pyc
+imbalance_data

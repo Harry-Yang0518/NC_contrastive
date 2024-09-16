@@ -36,14 +36,10 @@ def main(args):
         cudnn.deterministic = True
         cudnn.benchmark = True
 
-    os.environ["WANDB_API_KEY"] = "0c0abb4e8b5ce4ee1b1a4ef799edece5f15386ee"
-    os.environ["WANDB_MODE"] = "online"  # "dryrun"
-    os.environ["WANDB_CACHE_DIR"] = "/scratch/lg154/sseg/.cache/wandb"
-    os.environ["WANDB_CONFIG_DIR"] = "/scratch/lg154/sseg/.config/wandb"
-    wandb.login(key='0c0abb4e8b5ce4ee1b1a4ef799edece5f15386ee')
-    wandb.init(project="NCC_" + str(args.dataset),
-               name=args.store_name.split('/')[-1]
-               )
+    os.environ["WANDB_API_KEY"] = "cd3fbdd397ddb5a83b1235d177f4d81ce1200dbb"
+    os.environ["WANDB_MODE"] = "dryrun" #"dryrun"
+    wandb.login(key='cd3fbdd397ddb5a83b1235d177f4d81ce1200dbb')
+    wandb.init(project="supcon",name=args.store_name)
     wandb.config.update(args)
     main_worker(wandb.config)
 
@@ -91,7 +87,7 @@ if __name__ == '__main__':
     # train set
     parser = argparse.ArgumentParser(description="Global and Local Mixture Consistency Cumulative Learning")
     parser.add_argument('--dataset', type=str, default='cifar100', help="cifar10,cifar100,stl10")
-    parser.add_argument('--root', type=str, default='../dataset/', help="dataset setting")
+    parser.add_argument('--root', type=str, default='/scratch/hy2611/GLMC/data', help="dataset setting")
     parser.add_argument('--aug', default='null', help='data augmentation')  # null | pc (padded_random_crop)
     parser.add_argument('--coarse', default='t', type=str, help='f:False, t:Test at coarse level, b: Both train and test')
     parser.add_argument('--imbalance_rate', type=float, default=1.0)
@@ -100,7 +96,7 @@ if __name__ == '__main__':
 
     # model structure
     parser.add_argument('-a', '--arch', metavar='ARCH',
-                        default='resnet32')  # 'resnet18'|'mresnet32'|'resnet34'|'resnet32'|'resnet50'|'resnext50_32x4d'
+                        default='mresnet32')  # 'resnet18'|'mresnet32'|'resnet34'|'resnet32'|'resnet50'|'resnext50_32x4d'
     parser.add_argument('--num_classes', default=100, type=int, help='number of classes ')
     parser.add_argument('--loss', type=str, default='ce')  # ce|ls|ceh|hinge
     parser.add_argument('--temp', type=float, default=0.07)  # temperature for SupCon loss

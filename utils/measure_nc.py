@@ -217,29 +217,49 @@ def analysis_feat(labels, feats, args, W=None):
 
     # ====== compute mean and var for each class
     for c in range(args.num_classes):
-
-        feats_c = feats[labels == c]   # [N, 512]
+        feats_c = feats[labels == c]  # [N, 512]
 
         num_cls[c] = len(feats_c)
-        mean_cls[c] = torch.mean(feats_c, dim=0)
+        if num_cls[c] > 0:
+            mean_cls[c] = torch.mean(feats_c, dim=0)
 
-        # update within-class cov
-        X = feats_c - mean_cls[c].unsqueeze(0)   # [N, 512]
-        cov_cls[c] = X.T @ X / num_cls[c]        # [512, 512]
+            # update within-class cov
+            X = feats_c - mean_cls[c].unsqueeze(0)  # [N, 512]
+            cov_cls[c] = X.T @ X / num_cls[c]  # [512, 512]
+        else:
+            mean_cls[c] = torch.zeros(feats.shape[1], device=device)
+            cov_cls[c] = torch.zeros((feats.shape[1], feats.shape[1]), device=device)
 
     # global mean
-    M = torch.stack(mean_cls)        # [K, 512]
+    M = torch.stack(mean_cls)  # [K, 512]
     mean_all = torch.mean(M, dim=0)  # [512]
+    
+    def check_nan_inf(matrix, name):
+        if torch.isnan(matrix).any() or torch.isinf(matrix).any():
+            print(f"Warning: {name} contains NaN or Inf values!")
 
+
+    # Compute Sigma_b and Sigma_w
     Sigma_b = (M - mean_all.unsqueeze(0)).T @ (M - mean_all.unsqueeze(0)) / args.num_classes
     Sigma_w = torch.stack([cov * num for cov, num in zip(cov_cls, num_cls)]).sum(dim=0) / sum(num_cls)
-    Sigma_t = (feats - mean_all.unsqueeze(0)).T @ (feats - mean_all.unsqueeze(0)) / len(feats)
 
+    # Regularize Sigma_b to prevent singularity
+    epsilon = 1e-6
+    Sigma_b = Sigma_b + epsilon * torch.eye(Sigma_b.shape[0], device=Sigma_b.device)
+
+    # Check for NaNs or Infs
+    check_nan_inf(Sigma_b, 'Sigma_b')
+    check_nan_inf(Sigma_w, 'Sigma_w')
+
+    # Compute trace values
     Sigma_b = Sigma_b.cpu().numpy()
     Sigma_w = Sigma_w.cpu().numpy()
+    
     nc1 = np.trace(Sigma_w @ scipy.linalg.pinv(Sigma_b))
     nc1_cls = [np.trace(cov.cpu().numpy() @ scipy.linalg.pinv(Sigma_b)) for cov in cov_cls]
     nc1_cls = np.array(nc1_cls)
+
+    # Rest of your code...
 
     # =========== NC2
     nc2h = compute_ETF(M - mean_all.unsqueeze(0), device)
