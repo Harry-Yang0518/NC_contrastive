@@ -19,14 +19,17 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.model_selection import train_test_split
 
+
+#data generation code
 config_dt = dict(
-n_samples = 200,  # Total number of samples
+n_samples = 200,  # number of samples of each class
 n_features = 3,   # Number of features (dimensionality)
 n_cls = 3,        # Number of classes (Gaussian components)
 n_sub_cls = 3,
-cls_dist=[5, 8], sub_cls_dist=[2,4], sub_cls_std=1.5,
+cls_dist=[5, 8], sub_cls_dist=[2,4], sub_cls_std=1.5, #coarse distance between [] /subclass/subclass standard deviation
 random_state = 42
 )
+#let the data not linearly seperable
 
 # Merge config and argparse arguments
 def update_args_with_dict(args, config):
@@ -58,7 +61,8 @@ def train_one_epoch(model, criterion, optimizer, x, y):
 
 
 def main(args):
-
+    #random generated
+    #save the generated data to make sure every epoch has the same data
     args = update_args_with_dict(args, config_dt)
     if args.coarse.startswith('f'):
         args.num_classes = args.n_cls * args.n_sub_cls
@@ -109,15 +113,12 @@ def main(args):
         cudnn.deterministic = True
         cudnn.benchmark = True
 
-    os.environ["WANDB_API_KEY"] = "0c0abb4e8b5ce4ee1b1a4ef799edece5f15386ee"
-    os.environ["WANDB_MODE"] = "online"  # "dryrun"
-    os.environ["WANDB_CACHE_DIR"] = "/scratch/lg154/sseg/.cache/wandb"
-    os.environ["WANDB_CONFIG_DIR"] = "/scratch/lg154/sseg/.config/wandb"
-    wandb.login(key='0c0abb4e8b5ce4ee1b1a4ef799edece5f15386ee')
-    wandb.init(project="NC_cls",
-               name=args.store_name.split('/')[-1]
-               )
+    os.environ["WANDB_API_KEY"] = "cd3fbdd397ddb5a83b1235d177f4d81ce1200dbb"
+    os.environ["WANDB_MODE"] = "online" #"dryrun"
+    wandb.login(key='cd3fbdd397ddb5a83b1235d177f4d81ce1200dbb')
+    wandb.init(project="gaussian mixture",name=args.store_name)
     wandb.config.update(args)
+
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # ==================== create model
@@ -172,7 +173,9 @@ def main(args):
         log_dt.update({'val/acc_fine': test_acc}) if args.coarse[1] == 'f' else log_dt.update({'val/acc_coarse': test_acc})
 
         wandb.log(log_dt, step=epoch)
-        print(f"epoch:{epoch}, train loss:{loss:.4f}, train acc: {train_acc:.4f}, test acc: {test_acc:.4f}")
+
+        print(f"epoch:{epoch}, train loss:{loss():.4f}, train acc: {train_acc:.4f}, test acc: {test_acc:.4f}")
+
 
 
 if __name__ == '__main__':
