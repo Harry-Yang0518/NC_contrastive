@@ -10,10 +10,7 @@
 #SBATCH --partition=a100_1,a100_2,v100,rtx8000
 
 # job info
-Y=$1
-ARCH=$2
-LR=$3
-
+DIMENSION=$1
 
 
 # Singularity path
@@ -25,8 +22,12 @@ singularity exec --nv \
 --overlay ${ext3_path}:ro \
 ${sif_path} /bin/bash -c "
 source /ext3/env.sh
-python /scratch/hy2611/NC_contrastive/main_nc.py --epochs 200 --batch_size 1024 \
-  --aug pc --coarse fc --loss scon --two_crop \
-  --store_name coarse_fc_scon
+
+python /scratch/hy2611/NC_contrastive/main_dino.py \
+--arch mresnet32 \
+--out_dim ${DIMENSION} \
+--epoch 300 \
+--store_name dino_ep300_${DIMENSION}dim \
+--mixup_alpha 0.8
 "
 
