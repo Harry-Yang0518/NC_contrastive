@@ -25,6 +25,7 @@ singularity exec --nv \
 --overlay ${ext3_path}:ro \
 ${sif_path} /bin/bash -c "
 source /ext3/env.sh
+
 python /scratch/hy2611/NC_contrastive/main_nc.py --epochs 200 --batch_size 1024 \
   --aug pc --coarse fc --loss scon --two_crop \
   --store_name coarse_fc_scon

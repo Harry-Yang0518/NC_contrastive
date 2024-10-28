@@ -38,6 +38,7 @@ import vision_transformer as vits
 from vision_transformer import DINOHead
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
+os.environ['WANDB_INSECURE_SSL'] = "true"
 
 torchvision_archs = sorted(name for name in torchvision_models.__dict__
     if name.islower() and not name.startswith("__")
@@ -97,7 +98,7 @@ def get_args_parser():
     parser.add_argument('--freeze_last_layer', default=1, type=int, help="""Number of epochs
         during which we keep the output layer fixed. Typically doing so during
         the first epoch helps training. Try increasing this value if the loss does not decrease.""")
-    parser.add_argument("--lr", default=5e-6, type=float, help="""Learning rate at the end of
+    parser.add_argument("--lr", default=5e-4, type=float, help="""Learning rate at the end of
         linear warmup (highest LR used during training). The learning rate is linearly scaled
         with the batch size, and specified here for a reference batch size of 256.""")
     parser.add_argument("--warmup_epochs", default=5, type=int,
@@ -109,7 +110,7 @@ def get_args_parser():
     parser.add_argument('--drop_path_rate', type=float, default=0.1, help="stochastic depth rate")
 
     # Multi-crop parameters
-    parser.add_argument('--global_crops_scale', type=float, nargs='+', default=(0.8, 1.),
+    parser.add_argument('--global_crops_scale', type=float, nargs='+', default=(0.8, 1.),  ###can optimize
         help="""Scale range of the cropped image before resizing, relatively to the origin image.
         Used for large global view cropping. When disabling multi-crop (--local_crops_number 0), we
         recommand using a wider range of scale ("--global_crops_scale 0.14 1." for example)""")
@@ -148,7 +149,8 @@ def train_dino(args):
     os.environ["WANDB_API_KEY"] = "cd3fbdd397ddb5a83b1235d177f4d81ce1200dbb"
     os.environ["WANDB_MODE"] = "online" #"dryrun"
     wandb.login(key='cd3fbdd397ddb5a83b1235d177f4d81ce1200dbb')
-    wandb.init(project="dino10.9",name=args.store_name)
+    wandb.init(project="dino10.11", name=args.store_name)
+
     wandb.config.update(args)
 
     # ============ preparing data ... ============
@@ -259,15 +261,19 @@ def train_dino(args):
 
     # ============ optionally resume training ... ============
     to_restore = {"epoch": 0}
-    dino_utils.restart_from_checkpoint(
-        os.path.join(args.output_dir, "checkpoint.pth"),
-        run_variables=to_restore,
-        student=student,
-        teacher=teacher,
-        optimizer=optimizer,
-        fp16_scaler=fp16_scaler,
-        dino_loss=dino_loss,
-    )
+    # dino_utils.restart_from_checkpoint(
+    #     os.path.join(args.output_dir, "checkpoint.pth"),
+    #     run_variables=to_restore,
+    #     student=student,
+    #     teacher=teacher,
+    #     optimizer=optimizer,
+    #     fp16_scaler=fp16_scaler,
+    #     dino_loss=dino_loss,
+    # )
+
+    ####################need to debug above####################
+
+
     start_epoch = to_restore["epoch"]
 
     start_time = time.time()
@@ -536,6 +542,21 @@ def mixup_data(x, y, alpha=1.0):
     mixed_x = lam * x + (1 - lam) * x[index, :]
     y_a, y_b = y, y[index]
     return mixed_x, y_a, y_b, lam
+
+def cutmix_data(x, y, alpha=1.0):
+    """Apply CutMix augmentation."""
+    lam = np.random.beta(alpha, alpha)
+    batch_size = x.size()[0]
+    index = torch.randperm(batch_size).cuda()
+
+    # Generate random bounding box
+    bbx1, bby1, bbx2, bby2 = rand_bbox(x.size(), lam)
+    x[:, :, bbx1:bbx2, bby1:bby2] = x[index, :, bbx1:bbx2, bby1:bby2]
+
+    # Adjust lambda to account for the cropped region
+    lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (x.size()[-1] * x.size()[-2]))
+    y_a, y_b = y, y[index]
+    return x, y_a, y_b, lam
 
 
 
